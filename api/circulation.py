@@ -101,12 +101,13 @@ class CirculationAPI(object):
 
     CIRCULATION_MANAGER_INITIATED_LOAN_EVENT_TYPE = "circulation_manager_check_out"
     
-    def __init__(self, _db, overdrive=None, threem=None, axis=None):
+    def __init__(self, _db, overdrive=None, threem=None, axis=None, theta=None):
         self._db = _db
         self.overdrive = overdrive
         self.threem = threem
         self.axis = axis
-        self.apis = [x for x in (overdrive, threem, axis) if x]
+        self.theta = theta
+        self.apis = [x for x in (overdrive, threem, axis, theta) if x]
         self.log = logging.getLogger("Circulation API")
 
         # When we get our view of a patron's loans and holds, we need
@@ -126,6 +127,10 @@ class CirculationAPI(object):
             data_sources_for_sync.append(
                 DataSource.lookup(_db, DataSource.AXIS_360)
             )
+        if self.theta:
+            data_sources_for_sync.append(
+                DataSource.lookup(_db, DataSource.THETA)
+            )
 
         self.identifier_type_to_data_source_name = dict(
             (ds.primary_identifier_type, ds.name) 
@@ -142,6 +147,8 @@ class CirculationAPI(object):
             api = self.threem
         elif licensepool.data_source.name==DataSource.AXIS_360:
             api = self.axis
+        elif licensepool.data_source.name==DataSource.THETA:
+            api = self.theta
         else:
             return None
 
@@ -171,6 +178,7 @@ class CirculationAPI(object):
         if licensepool.open_access:
             # We can 'loan' open-access content ourselves just by
             # putting a row in the database.
+            print "\nXXXXXXX this book is open access\n"
             now = datetime.datetime.utcnow()
             __transaction = self._db.begin_nested()
             loan, is_new = licensepool.loan_to(patron, start=now, end=None)

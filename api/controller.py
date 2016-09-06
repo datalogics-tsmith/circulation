@@ -95,6 +95,7 @@ from adobe_vendor_id import AdobeVendorIDController
 from axis import Axis360API
 from overdrive import OverdriveAPI
 from threem import ThreeMAPI
+from theta import ThetaAPI
 from circulation import CirculationAPI
 from novelist import (
     NoveListAPI,
@@ -185,11 +186,13 @@ class CirculationManager(object):
             overdrive = OverdriveAPI.from_environment(self._db)
             threem = ThreeMAPI.from_environment(self._db)
             axis = Axis360API.from_environment(self._db)
+            theta = ThetaAPI.from_environment(self._db)
             self.circulation = CirculationAPI(
                 _db=self._db, 
                 threem=threem, 
                 overdrive=overdrive,
-                axis=axis
+                axis=axis,
+                theta=theta
             )
 
     def setup_controllers(self):
@@ -567,11 +570,16 @@ class LoanController(CirculationManagerController):
             return pool
 
         # Find the delivery mechanism they asked for, if any.
+        logging.info("XXXXX Mechanism is none")
         mechanism = None
+        mechanism_id = 2
         if mechanism_id:
+            logging.info("XXXXX Looking up mechanism ID")
             mechanism = self.load_licensepooldelivery(pool, mechanism_id)
             if isinstance(mechanism, ProblemDetail):
                 return mechanism
+        else:
+            logging.info("XXXXX We didn't receive a mechanism ID")
 
         if not pool:
             # I've never heard of this book.

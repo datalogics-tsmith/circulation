@@ -13,6 +13,7 @@ from authenticator import Authenticator
 from overdrive import OverdriveAPI
 from threem import ThreeMAPI
 from axis import Axis360API
+from theta import ThetaAPI
 from circulation import CirculationAPI
 
 class ServiceStatus(object):
@@ -28,6 +29,7 @@ class ServiceStatus(object):
         self.overdrive = OverdriveAPI.from_environment(self._db)
         self.threem = ThreeMAPI.from_environment(self._db)
         self.axis = Axis360API.from_environment(self._db)
+        self.theta = ThetaAPI.from_environment(self._db)
 
     def loans_status(self, response=False):
         """Checks the length of request times for patron activity.
@@ -58,7 +60,7 @@ class ServiceStatus(object):
             return status
         [(patron, password)] = patron_info
 
-        for api in [self.overdrive, self.threem, self.axis]:
+        for api in [self.overdrive, self.threem, self.axis, self.theta]:
             if not api:
                 continue
             name = api.source.name
@@ -84,14 +86,16 @@ class ServiceStatus(object):
         patron, password = self.get_patron()
         api = CirculationAPI(
             self._db, overdrive=self.overdrive, threem=self.threem,
-            axis=self.axis
+            axis=self.axis, theta=self.theta
         )
 
         license_pool = identifier.licensed_through
         if not license_pool:
             raise ValueError("No license pool for this identifier")
         delivery_mechanism = None
+        logging.info("XXXXX In services")
         if license_pool.delivery_mechanisms:
+            logging.info("XXXXX license_pool deliver_mechanisms exists")
             delivery_mechanism = license_pool.delivery_mechanisms[0]
         loans = []
 

@@ -80,6 +80,7 @@ class ThetaAPI(BaseThetaAPI, Authenticator, BaseCirculationAPI):
         url = self.base_url + "checkout/v2" 
         title_id = licensepool.identifier.identifier
         patron_id = patron.authorization_identifier
+        self.log.info("XXXXX Sending request to %s, for %s and patron %s" % (url, title_id, patron_id))
         args = dict(titleId=title_id, patronId=patron_id, 
                     format=internal_format)
         response = self.request(url, data=args, method="POST")

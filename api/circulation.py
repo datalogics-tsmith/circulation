@@ -174,11 +174,13 @@ class CirculationAPI(object):
         :return: A 3-tuple (`Loan`, `Hold`, `is_new`). Either `Loan`
         or `Hold` must be None, but not both.
         """
+
+        logging.info("XXXXX A borrow has been triggered")
+
         now = datetime.datetime.utcnow()
         if licensepool.open_access:
             # We can 'loan' open-access content ourselves just by
             # putting a row in the database.
-            print "\nXXXXXXX this book is open access\n"
             now = datetime.datetime.utcnow()
             __transaction = self._db.begin_nested()
             loan, is_new = licensepool.loan_to(patron, start=now, end=None)
@@ -192,13 +194,14 @@ class CirculationAPI(object):
         # is currently on loan or on hold might be wrong.
         api = self.api_for_license_pool(licensepool)
 
-        must_set_delivery_mechanism = (
-            api.SET_DELIVERY_MECHANISM_AT == BaseCirculationAPI.BORROW_STEP)
+        must_set_delivery_mechanism = (api.SET_DELIVERY_MECHANISM_AT == BaseCirculationAPI.BORROW_STEP)
 
         if must_set_delivery_mechanism and not delivery_mechanism:
+            logging.info("XXXXX There is no delivery mechanism")
             raise DeliveryMechanismMissing()
     
         content_link = content_expires = None
+        logging.info("XXXXX Getting our delivery mechanism")
 
         internal_format = api.internal_format(delivery_mechanism)
 
@@ -235,6 +238,7 @@ class CirculationAPI(object):
 
         new_loan = False
         try:
+            logging.info("XXXXX We're trying to do the checkout")
             loan_info = api.checkout(
                 patron, pin, licensepool, internal_format
             )

@@ -570,16 +570,12 @@ class LoanController(CirculationManagerController):
             return pool
 
         # Find the delivery mechanism they asked for, if any.
-        logging.info("XXXXX Mechanism is none")
         mechanism = None
         mechanism_id = 2
         if mechanism_id:
-            logging.info("XXXXX Looking up mechanism ID")
             mechanism = self.load_licensepooldelivery(pool, mechanism_id)
             if isinstance(mechanism, ProblemDetail):
                 return mechanism
-        else:
-            logging.info("XXXXX We didn't receive a mechanism ID")
 
         if not pool:
             # I've never heard of this book.

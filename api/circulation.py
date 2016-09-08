@@ -175,8 +175,6 @@ class CirculationAPI(object):
         or `Hold` must be None, but not both.
         """
 
-        logging.info("XXXXX A borrow has been triggered")
-
         now = datetime.datetime.utcnow()
         if licensepool.open_access:
             # We can 'loan' open-access content ourselves just by
@@ -197,11 +195,9 @@ class CirculationAPI(object):
         must_set_delivery_mechanism = (api.SET_DELIVERY_MECHANISM_AT == BaseCirculationAPI.BORROW_STEP)
 
         if must_set_delivery_mechanism and not delivery_mechanism:
-            logging.info("XXXXX There is no delivery mechanism")
             raise DeliveryMechanismMissing()
     
         content_link = content_expires = None
-        logging.info("XXXXX Getting our delivery mechanism")
 
         internal_format = api.internal_format(delivery_mechanism)
 
@@ -238,7 +234,6 @@ class CirculationAPI(object):
 
         new_loan = False
         try:
-            logging.info("XXXXX We're trying to do the checkout")
             loan_info = api.checkout(
                 patron, pin, licensepool, internal_format
             )

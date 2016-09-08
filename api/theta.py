@@ -1,3 +1,4 @@
+import logging
 from nose.tools import set_trace
 from datetime import datetime, timedelta
 
@@ -80,7 +81,6 @@ class ThetaAPI(BaseThetaAPI, Authenticator, BaseCirculationAPI):
         url = self.base_url + "checkout/v2" 
         title_id = licensepool.identifier.identifier
         patron_id = patron.authorization_identifier
-        self.log.info("XXXXX Sending request to %s, for %s and patron %s" % (url, title_id, patron_id))
         args = dict(titleId=title_id, patronId=patron_id, 
                     format=internal_format)
         response = self.request(url, data=args, method="POST")
@@ -97,7 +97,7 @@ class ThetaAPI(BaseThetaAPI, Authenticator, BaseCirculationAPI):
         identifier = licensepool.identifier
         # This should include only one 'activity'.
         activities = self.patron_activity(patron, pin, licensepool.identifier)
-        
+
         for loan in activities:
             if not isinstance(loan, LoanInfo):
                 continue
@@ -109,6 +109,7 @@ class ThetaAPI(BaseThetaAPI, Authenticator, BaseCirculationAPI):
             fulfillment = loan.fulfillment_info            
             if not fulfillment or not isinstance(fulfillment, FulfillmentInfo):
                 raise CannotFulfill()
+            self.log.info("XXXXX We're returning a fulfillment object: %s" % (fulfillment))
             return fulfillment
         # If we made it to this point, the patron does not have this
         # book checked out.
@@ -354,8 +355,8 @@ class ResponseParser(ThetaParser):
         """Raise an error if the given lxml node represents an Theta error
         condition.
         """
-        code = self._xpath1(e, '//theta:status/theta:code', ns)
-        message = self._xpath1(e, '//theta:status/theta:statusMessage', ns)
+        code = self._xpath1(e, '//axis:status/axis:code', ns)
+        message = self._xpath1(e, '//axis:status/axis:statusMessage', ns)
         if message is None:
             message = etree.tostring(e)
         else:
@@ -393,7 +394,7 @@ class CheckoutResponseParser(ResponseParser):
 
     def process_all(self, string):
         for i in super(CheckoutResponseParser, self).process_all(
-                string, "//theta:checkoutResult", self.NS):
+                string, "//axis:checkoutResult", self.NS):
             return i
 
     def process_one(self, e, namespaces):
@@ -404,8 +405,8 @@ class CheckoutResponseParser(ResponseParser):
         self.raise_exception_on_error(e, namespaces)
 
         # If we get to this point it's because the checkout succeeded.
-        expiration_date = self._xpath1(e, '//theta:expirationDate', namespaces)
-        fulfillment_url = self._xpath1(e, '//theta:url', namespaces)
+        expiration_date = self._xpath1(e, '//axis:expirationDate', namespaces)
+        fulfillment_url = self._xpath1(e, '//axis:url', namespaces)
         if fulfillment_url is not None:
             fulfillment_url = fulfillment_url.text
 
@@ -431,7 +432,7 @@ class HoldResponseParser(ResponseParser):
 
     def process_all(self, string):
         for i in super(HoldResponseParser, self).process_all(
-                string, "//theta:addtoholdResult", self.NS):
+                string, "//axis:addtoholdResult", self.NS):
             return i
 
     def process_one(self, e, namespaces):
@@ -443,7 +444,7 @@ class HoldResponseParser(ResponseParser):
 
         # If we get to this point it's because the hold place succeeded.
         queue_position = self._xpath1(
-            e, '//theta:holdsQueuePosition', namespaces)
+            e, '//axis:holdsQueuePosition', namespaces)
         if queue_position is None:
             queue_position = None
         else:
@@ -463,7 +464,7 @@ class HoldReleaseResponseParser(ResponseParser):
 
     def process_all(self, string):
         for i in super(HoldReleaseResponseParser, self).process_all(
-                string, "//theta:removeholdResult", self.NS):
+                string, "//axis:removeholdResult", self.NS):
             return i
 
     def process_one(self, e, namespaces):
@@ -477,31 +478,30 @@ class AvailabilityResponseParser(ResponseParser):
    
     def process_all(self, string):
         for info in super(AvailabilityResponseParser, self).process_all(
-                string, "//theta:title", self.NS):
+		string, "//axis:title", self.NS):
             # Filter out books where nothing in particular is
             # happening.
             if info:
                 yield info
 
     def process_one(self, e, ns):
-
         # Figure out which book we're talking about.
-        theta_identifier = self.text_of_subtag(e, "theta:titleId", ns)
-        availability = self._xpath1(e, 'theta:availability', ns)
+        theta_identifier = self.text_of_subtag(e, "axis:titleId", ns)
+        availability = self._xpath1(e, 'axis:availability', ns)
         if availability is None:
             return None
-        reserved = self._xpath1_boolean(availability, 'theta:isReserved', ns)
-        checked_out = self._xpath1_boolean(availability, 'theta:isCheckedout', ns)
-        on_hold = self._xpath1_boolean(availability, 'theta:isInHoldQueue', ns)
+        reserved = self._xpath1_boolean(availability, 'axis:isReserved', ns)
+        checked_out = self._xpath1_boolean(availability, 'axis:isCheckedout', ns)
+        on_hold = self._xpath1_boolean(availability, 'axis:isInHoldQueue', ns)
 
         info = None
         if checked_out:
             start_date = self._xpath1_date(
-                availability, 'theta:checkoutStartDate', ns)
+                availability, 'axis:checkoutStartDate', ns)
             end_date = self._xpath1_date(
-                availability, 'theta:checkoutEndDate', ns)
+                availability, 'axis:checkoutEndDate', ns)
             download_url = self.text_of_optional_subtag(
-                availability, 'theta:downloadUrl', ns)
+                availability, 'axis:downloadUrl', ns)
             if download_url:
                 fulfillment = FulfillmentInfo(
                     identifier_type=self.id_type,
@@ -518,7 +518,7 @@ class AvailabilityResponseParser(ResponseParser):
 
         elif reserved:
             end_date = self._xpath1_date(
-                availability, 'theta:reservedEndDate', ns)
+                availability, 'axis:reservedEndDate', ns)
             info = HoldInfo(
                 identifier_type=self.id_type,
                 identifier=theta_identifier,
@@ -528,10 +528,11 @@ class AvailabilityResponseParser(ResponseParser):
             )
         elif on_hold:
             position = self.int_of_optional_subtag(
-                availability, 'theta:holdsQueuePosition', ns)
+                availability, 'axis:holdsQueuePosition', ns)
             info = HoldInfo(
                 identifier_type=self.id_type,
                 identifier=theta_identifier,
                 start_date=None, end_date=None,
                 hold_position=position)
+        
         return info

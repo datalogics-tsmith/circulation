@@ -101,12 +101,13 @@ class CirculationAPI(object):
 
     CIRCULATION_MANAGER_INITIATED_LOAN_EVENT_TYPE = "circulation_manager_check_out"
     
-    def __init__(self, _db, overdrive=None, threem=None, axis=None):
+    def __init__(self, _db, overdrive=None, threem=None, axis=None, theta=None):
         self._db = _db
         self.overdrive = overdrive
         self.threem = threem
         self.axis = axis
-        self.apis = [x for x in (overdrive, threem, axis) if x]
+        self.theta = theta
+        self.apis = [x for x in (overdrive, threem, axis, theta) if x]
         self.log = logging.getLogger("Circulation API")
 
         # When we get our view of a patron's loans and holds, we need
@@ -126,6 +127,10 @@ class CirculationAPI(object):
             data_sources_for_sync.append(
                 DataSource.lookup(_db, DataSource.AXIS_360)
             )
+        if self.theta:
+            data_sources_for_sync.append(
+                DataSource.lookup(_db, DataSource.THETA)
+            )
 
         self.identifier_type_to_data_source_name = dict(
             (ds.primary_identifier_type, ds.name) 
@@ -142,6 +147,8 @@ class CirculationAPI(object):
             api = self.threem
         elif licensepool.data_source.name==DataSource.AXIS_360:
             api = self.axis
+        elif licensepool.data_source.name==DataSource.THETA:
+            api = self.theta
         else:
             return None
 
@@ -167,6 +174,7 @@ class CirculationAPI(object):
         :return: A 3-tuple (`Loan`, `Hold`, `is_new`). Either `Loan`
         or `Hold` must be None, but not both.
         """
+
         now = datetime.datetime.utcnow()
         if licensepool.open_access:
             # We can 'loan' open-access content ourselves just by
@@ -184,8 +192,7 @@ class CirculationAPI(object):
         # is currently on loan or on hold might be wrong.
         api = self.api_for_license_pool(licensepool)
 
-        must_set_delivery_mechanism = (
-            api.SET_DELIVERY_MECHANISM_AT == BaseCirculationAPI.BORROW_STEP)
+        must_set_delivery_mechanism = (api.SET_DELIVERY_MECHANISM_AT == BaseCirculationAPI.BORROW_STEP)
 
         if must_set_delivery_mechanism and not delivery_mechanism:
             raise DeliveryMechanismMissing()

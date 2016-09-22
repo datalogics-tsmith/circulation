@@ -4,6 +4,8 @@ import logging
 import sys
 import urllib
 import datetime
+from wsgiref.handlers import format_date_time
+from time import mktime
 
 from lxml import etree
 
@@ -41,6 +43,7 @@ from core.model import (
     get_one,
     get_one_or_create,
     Admin,
+    Annotation,
     CachedFeed,
     CirculationEvent,
     Complaint,
@@ -75,6 +78,10 @@ from opds import (
     CirculationManagerLoanAndHoldAnnotator,
     PreloadFeed,
 )
+from annotations import (
+  AnnotationWriter,
+  AnnotationParser,
+)
 from problem_details import *
 
 from authenticator import Authenticator
@@ -95,6 +102,7 @@ from adobe_vendor_id import AdobeVendorIDController
 from axis import Axis360API
 from overdrive import OverdriveAPI
 from threem import ThreeMAPI
+from theta import ThetaAPI
 from circulation import CirculationAPI
 from novelist import (
     NoveListAPI,
@@ -127,7 +135,7 @@ class CirculationManager(object):
 
         self.auth = Authenticator.initialize(self._db, test=testing)
         self.setup_circulation()
-        self.external_search = self.setup_search()
+        self.__external_search = None
         self.lending_policy = load_lending_policy(
             Configuration.policy('lending', {})
         )
@@ -136,6 +144,17 @@ class CirculationManager(object):
         self.setup_adobe_vendor_id()
 
         self.opds_authentication_document = None
+
+    @property
+    def external_search(self):
+        """Retrieve or create a connection to the search interface.
+
+        This is created lazily so that a failure to connect only
+        affects searches, not the rest of the circulation manager.
+        """
+        if not self.__external_search:
+            self.__external_search = self.setup_search()
+        return self.__external_search
 
     def create_top_level_lane(self, lanelist):
         name = 'All Books'
@@ -185,11 +204,13 @@ class CirculationManager(object):
             overdrive = OverdriveAPI.from_environment(self._db)
             threem = ThreeMAPI.from_environment(self._db)
             axis = Axis360API.from_environment(self._db)
+            theta = ThetaAPI.from_environment(self._db)
             self.circulation = CirculationAPI(
                 _db=self._db, 
                 threem=threem, 
                 overdrive=overdrive,
-                axis=axis
+                axis=axis,
+                theta=theta
             )
 
     def setup_controllers(self):
@@ -197,6 +218,7 @@ class CirculationManager(object):
         self.index_controller = IndexController(self)
         self.opds_feeds = OPDSFeedController(self)
         self.loans = LoanController(self)
+        self.annotations = AnnotationController(self)
         self.accounts = AccountController(self)
         self.urn_lookup = URNLookupController(self._db)
         self.work_controller = WorkController(self)
@@ -568,6 +590,7 @@ class LoanController(CirculationManagerController):
 
         # Find the delivery mechanism they asked for, if any.
         mechanism = None
+        mechanism_id = 2
         if mechanism_id:
             mechanism = self.load_licensepooldelivery(pool, mechanism_id)
             if isinstance(mechanism, ProblemDetail):
@@ -819,6 +842,69 @@ class LoanController(CirculationManagerController):
                     self.circulation, hold)
             feed = unicode(feed)
             return feed_response(feed, None)
+
+class AnnotationController(CirculationManagerController):
+
+    def container(self):
+        headers = dict()
+        headers['Allow'] = 'GET,HEAD,OPTIONS,POST'
+        headers['Accept-Post'] = AnnotationWriter.CONTENT_TYPE
+
+        if flask.request.method=='HEAD':
+            return Response(status=200, headers=headers)
+
+        patron = flask.request.patron
+
+        if flask.request.method == 'GET':
+            headers['Link'] = ['<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+                               '<http://www.w3.org/TR/annotation-protocol/>; rel="http://www.w3.org/ns/ldp#constrainedBy"']
+            headers['Content-Type'] = AnnotationWriter.CONTENT_TYPE
+
+            container, timestamp = AnnotationWriter.annotation_container_for(patron)
+            etag = 'W/""'
+            if timestamp:
+                etag = 'W/"%s"' % timestamp
+                headers['Last-Modified'] = format_date_time(mktime(timestamp.timetuple()))
+            headers['ETag'] = etag
+
+            content = json.dumps(container)
+            return Response(content, status=200, headers=headers)
+
+        data = flask.request.data
+        annotation = AnnotationParser.parse(self._db, data, patron)
+
+        if isinstance(annotation, ProblemDetail):
+            return annotation
+
+        return Response(status=200, headers=headers)
+
+    def detail(self, annotation_id):
+        headers = dict()
+        headers['Allow'] = 'GET,HEAD,OPTIONS,DELETE'
+
+        if flask.request.method=='HEAD':
+            return Response(status=200, headers=headers)
+
+        patron = flask.request.patron
+
+        annotation = get_one(
+            self._db, Annotation,
+            patron=patron,
+            id=annotation_id,
+            active=True)
+
+        if not annotation:
+            return NO_ANNOTATION
+
+        if flask.request.method == 'DELETE':
+            annotation.set_inactive()
+            return Response()
+
+        content = json.dumps(AnnotationWriter.detail(annotation))
+        status_code = 200
+        headers['Link'] = '<http://www.w3.org/ns/ldp#Resource>; rel="type"'
+        headers['Content-Type'] = AnnotationWriter.CONTENT_TYPE
+        return Response(content, status_code, headers)
 
 
 class WorkController(CirculationManagerController):

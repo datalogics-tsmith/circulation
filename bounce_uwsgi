@@ -1,0 +1,4 @@
+#!/bin/bash
+
+../uwsgi_kill
+uwsgi --ini circulation_uwsgi.ini &

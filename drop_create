@@ -1,0 +1,5 @@
+#!/bin/bash
+
+sudo -u postgres psql -c "drop database simplified_circulation_test"
+sudo -u postgres psql -c "create database simplified_circulation_test"
+sudo -u postgres psql -c "grant all privileges on database simplified_circulation_test to simplified_test"

@@ -1,0 +1,4 @@
+#!/bin/bash
+uwsgi --ini circulation_uwsgi.ini &
+
+/var/opt/elasticsearch-1.7.5/bin/elasticsearch &

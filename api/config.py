@@ -41,6 +41,8 @@ class Configuration(CoreConfiguration):
     OAUTH_CLIENT_SECRET = 'client_secret'
     SECRET_KEY = "secret_key"
 
+    EVERGREEN_INTEGRATION = "Evergreen"
+
     MILLENIUM_INTEGRATION = "Millenium"
     AUTHORIZATION_IDENTIFIER_BLACKLIST = "authorization_identifier_blacklist"
     STAFF_PICKS_INTEGRATION = "Staff Picks"

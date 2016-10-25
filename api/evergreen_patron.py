@@ -117,7 +117,7 @@ class EvergreenPatronAPI(BasicAuthAuthenticator, XMLParser):
     def pintest(self, barcode, pin):
         """http://libmail.georgialibraries.org/pipermail/open-ils-dev/2009-February/004270.html"""
 
-        seed_request_url = self.root + "osrf-gateway-v1?service=open-ils.auth&method=open-ils.auth.authenticate.init&param=%s" % barcode
+        seed_request_url = self.root + "osrf-gateway-v1?service=open-ils.auth&method=open-ils.auth.authenticate.init&param=\"%s\"" % barcode
         seed_response = requests.get(seed_request_url, verify=False)
 
         # Parses the seed from the fulfilled request, assuming it is JSON of the form {"payload":["$2a$10$kBzDve1nt6TSktKwi4Q4c."],"status":200}

@@ -231,6 +231,8 @@ class EvergreenPatronAPI(BasicAuthAuthenticator, XMLParser):
         # no authenticated patron.
         if not self.pintest(identifier, password):
             return None
+        else:
+            return Patron()
 
         now = datetime.datetime.utcnow()
 

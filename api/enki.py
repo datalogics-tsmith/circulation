@@ -137,7 +137,6 @@ class EnkiCirculationMonitor(Monitor):
         return edition, license_pool
 
 class MockEnkiAPI(BaseMockEnkiAPI, EnkiAPI):
-    #TODO
     pass
 
 class EnkiCollectionReaper(IdentifierSweepMonitor):
@@ -148,43 +147,6 @@ class ResponseParser(EnkiParser):
     id_type = Identifier.ENKI_ID
 
     SERVICE_NAME = "Enki"
-
-    def raise_exception_on_error(self, e, ns, custom_error_classes={}):
-        #TODO: Handle failure response here
-
-        """code = self._xpath1(e, '//axis:status/axis:code', ns)
-        message = self._xpath1(e, '//axis:status/axis:statusMessage', ns)
-        if message is None:
-            message = etree.tostring(e)
-        else:
-            message = message.text
-
-        if code is None:
-            # Something is so wrong that we don't know what to do.
-            raise RemoteInitiatedServerError(message, self.SERVICE_NAME)
-        code = code.text
-        try:
-            code = int(code)
-        except ValueError:
-            # Non-numeric code? Inconcievable!
-            raise RemoteInitiatedServerError(
-                "Invalid response code from Axis 360: %s" % code,
-                self.SERVICE_NAME
-            )
-
-        for d in custom_error_classes, self.code_to_exception:
-            if (code, message) in d:
-                raise d[(code, message)]
-            elif code in d:
-                # Something went wrong and we know how to turn it into a
-                # specific exception.
-                cls = d[code]
-                if cls is RemoteInitiatedServerError:
-                    e = cls(message, self.SERVICE_NAME)
-                else:
-                    e = cls(message)
-                raise e
-        return code, message"""
 
 class CheckoutResponseParser(ResponseParser):
     #TODO??

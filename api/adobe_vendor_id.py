@@ -873,7 +873,7 @@ class AuthdataUtility(object):
             self.log.error(
                 "Password portion of short client token exceeds 76 characters; Adobe will probably truncate it."
             )
-        return base + "|" + signature
+        return base64.b64encode(base) + "|" + base64.b64encode(signature)
             
     def decode_short_client_token(self, token):
         """Attempt to interpret a 'username' and 'password' as a short

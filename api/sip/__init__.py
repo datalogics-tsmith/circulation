@@ -165,6 +165,7 @@ class SIP2AuthenticationProvider(BasicAuthenticationProvider):
         # exception is 'hold privileges denied', which only blocks a
         # patron from putting books on hold and which we currently
         # don't enforce.
+        print "ARCHAY"
         status = info['patron_status_parsed']
         block_reason = PatronData.NO_VALUE
         for field in SIPClient.PATRON_STATUS_FIELDS:

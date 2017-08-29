@@ -680,6 +680,7 @@ class SIPClient(Constants):
 
         A SIP2 message ends with a \r character.
         """
+        self.log.warn("ARCHAY WAS HERE")
         done = False
         data = ""
         tmp = ""

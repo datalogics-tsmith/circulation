@@ -169,12 +169,15 @@ class SIP2AuthenticationProvider(BasicAuthenticationProvider):
         status = info['patron_status_parsed']
         block_reason = PatronData.NO_VALUE
         for field in SIPClient.PATRON_STATUS_FIELDS:
+            print "FIELD IS: " + field
+            print "STATUS IS: " + status.get(field)
             if field == SIPClient.HOLD_PRIVILEGES_DENIED:
                 continue
             if status.get(field) is True:
                 block_reason = cls.SPECIFIC_BLOCK_REASONS.get(
                     field, PatronData.UNKNOWN_BLOCK
                 )
+                print "REASON IS: " + block_reason
                 if block_reason not in (PatronData.NO_VALUE,
                                         PatronData.UNKNOWN_BLOCK):
                     # Even if there are multiple problems with this

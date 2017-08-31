@@ -127,6 +127,9 @@ class SIP2AuthenticationProvider(BasicAuthenticationProvider):
         SIPClient.patron_information() to an abstract,
         authenticator-independent PatronData object.
         """
+        print "ARCHAYA begin"
+        print info
+        print "ARCHAYA end"
         if info.get('valid_patron_password') == 'N':
             # The patron did not authenticate correctly. Don't
             # return any data.
